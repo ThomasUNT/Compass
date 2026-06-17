@@ -226,8 +226,8 @@ void handleRoot() {
     
     <script>
         // Paste your custom audio URLs here!
-        const startSound = new Audio('https://www.soundjay.com/mechanical/sounds/mechanical-clonk-1.mp3');
-        const stopSound = new Audio('https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3');
+        const startSound = new Audio('https://raw.githubusercontent.com/ThomasUNT/Compass/main/Moving.wav');
+        const stopSound = new Audio('https://raw.githubusercontent.com/ThomasUNT/Compass/main/TargetReached.wav');
         
         let lastState = -1;
 
