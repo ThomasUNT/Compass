@@ -65,6 +65,7 @@ void handleRoot();
 void handleSet();
 void handleNext();
 void handleWake();
+void handleColor();
 void handleStatus();
 void handleSerialInput();
 void printIpBanner();
@@ -102,6 +103,7 @@ void setup() {
     server.on("/set", HTTP_GET, handleSet);
     server.on("/next", HTTP_GET, handleNext);
     server.on("/wake", HTTP_GET, handleWake);
+    server.on("/color", HTTP_GET, handleColor);
     server.on("/status", HTTP_GET, handleStatus);
     server.begin();
     Serial.println("HTTP server started.");
@@ -220,7 +222,8 @@ void handleRoot() {
         input{font-size:20px;padding:8px;width:200px;text-transform:lowercase;border:none;border-radius:4px;}
         button{font-size:20px;padding:8px 16px;background:#00ffff;color:#000;border:none;border-radius:4px;cursor:pointer;font-weight:bold;}
         .btn-next{background:#ff0055; color:#fff; width:100%; margin-top:15px; padding:16px;}
-        .btn-wake{background:#00ff88; color:#000; width:50%; padding:16px;}
+        .btn-wake{background:#00ff88; color:#000; width:48%; padding:16px;}
+        .btn-color{background:#00ffff; color:#000; width:48%; padding:16px; transition: background;}
         .power-controls{display:flex; justify-content:space-between; margin-top:20px;}
         .box{background:#222;color:#0ff;padding:16px;border-radius:8px;margin-top:20px;}
     </style></head><body>
@@ -241,6 +244,7 @@ void handleRoot() {
 
     <div class='power-controls'>
         <button type='button' class='btn-wake' onclick='sendWake()'>WAKE UP</button>
+        <button type='button' id='colorBtn' class='btn-color' onclick='sendColor()'>TURQUOISE</button>
     </div>
     
     <script>
@@ -249,6 +253,7 @@ void handleRoot() {
         const stopSound = new Audio('https://raw.githubusercontent.com/ThomasUNT/Compass/main/TargetReached.wav');
         const wakeSound = new Audio('https://raw.githubusercontent.com/ThomasUNT/Compass/main/Startup.wav');
         
+        let isPurple = false;
         let lastState = -1;
 
         function sendWord(e) {
@@ -262,6 +267,25 @@ void handleRoot() {
         function sendWake() {
             fetch('/wake');
             wakeSound.play().catch(err => console.log("Audio play blocked by browser", err));
+        }
+        function sendColor() {
+            isPurple = !isPurple;
+            let theme = isPurple ? 'purple' : 'turquoise';
+            fetch('/color?theme=' + theme);
+
+            let newColor = isPurple ? '#b026ff' : '#00ffff';
+            document.documentElement.style.setProperty('--theme-color', newColor);
+
+            let btn = document.getElementById('colorBtn');
+        if (isPurple) {
+            btn.style.background = '#b026ff'; // Purple
+            btn.style.color = '#ffffff';      // White text for better contrast
+            btn.innerText = 'PURPLE';
+        } else {
+            btn.style.background = '#00ffff'; // Turquoise
+            btn.style.color = '#000000';      // Black text for better contrast
+            btn.innerText = 'TURQUOISE';
+            }
         }
         function getCompassSequence(word) {
             if (!word) return "";
@@ -364,6 +388,16 @@ void handleNext() {
 void handleWake() {
     currentState = STATE_STARTUP;
     server.send(204, "text/plain", "");
+}
+
+void handleColor() {
+    if (server.arg("theme") == "purple") {
+        compass.setColor(176, 38, 255);
+    } else {
+        // Default to original Turquoise
+        compass.setColor(0, 255, 255);
+    }
+    server.send(200, "text/plain", "Color changed");
 }
 
 void handleSerialInput() {

@@ -22,6 +22,12 @@ public:
     void setIdleMode(bool idle);
     void playStartupSequence();
     bool hasReachedTarget();
+    int activeR = 0, activeG = 255, activeB = 255;
+    void setColor(int r, int g, int b) {
+        activeR = r;
+        activeG = g;
+        activeB = b;
+    }
 
 private:
     // --- Hardware Objects ---
@@ -75,7 +81,7 @@ private:
     void fadeToTargetOnly();
     void showLedLevels();
     void clearLedLevels();
-    uint32_t scaledTurquoise(int level);
+    uint32_t scaledColor(int level);
     float getDisplayAngle();
     int getOuterIndexFromAngle(float angle);
     int getInnerIndexFromAngle(float angle);

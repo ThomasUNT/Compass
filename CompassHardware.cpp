@@ -215,7 +215,7 @@ void CompassHardware::showLedLevels() {
     strip.clear();
     for (int i = 0; i < LED_COUNT; i++) {
         if (ledLevel[i] > 0) {
-            strip.setPixelColor(i, scaledTurquoise(ledLevel[i]));
+            strip.setPixelColor(i, scaledColor(ledLevel[i]));
         }
     }
     strip.show();
@@ -227,10 +227,10 @@ void CompassHardware::clearLedLevels() {
     }
 }
 
-uint32_t CompassHardware::scaledTurquoise(int level) {
-    int r = (TURQ_R * level) / 255;
-    int g = (TURQ_G * level) / 255;
-    int b = (TURQ_B * level) / 255;
+uint32_t CompassHardware::scaledColor(int level) {
+    int r = (activeR * level) / 255;
+    int g = (activeG * level) / 255;
+    int b = (activeB * level) / 255;
     return strip.Color(r, g, b);
 }
 
