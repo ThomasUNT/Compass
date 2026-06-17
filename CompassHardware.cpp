@@ -180,14 +180,11 @@ void CompassHardware::markSweepLights() {
         float t = (float)i / steps;
         float angle = normalizeAngle(lastTrailAngle + delta * t);
 
-        // This ensures the sweeping trail only lights the target's ring
-        if (currentTarget.useInnerRing) {
-            int innerIndex = getInnerIndexFromAngle(angle);
-            ledLevel[INNER_START + innerIndex] = LED_MAX_BRIGHTNESS;
-        } else {
-            int outerIndex = getOuterIndexFromAngle(angle);
-            ledLevel[OUTER_START + outerIndex] = LED_MAX_BRIGHTNESS;
-        }
+        int innerIndex = getInnerIndexFromAngle(angle);
+        ledLevel[INNER_START + innerIndex] = LED_MAX_BRIGHTNESS;
+
+        int outerIndex = getOuterIndexFromAngle(angle);
+        ledLevel[OUTER_START + outerIndex] = LED_MAX_BRIGHTNESS;
     }
 
     lastTrailAngle = currentAngle;
