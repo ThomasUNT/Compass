@@ -47,7 +47,8 @@ enum SystemState {
     STATE_IDLE,
     STATE_NEXT_LETTER,
     STATE_MOVING,
-    STATE_WAITING_FOR_USER
+    STATE_WAITING_FOR_USER,
+    STATE_STARTUP
 };
 
 SystemState currentState = STATE_IDLE;
@@ -63,6 +64,7 @@ bool lookupInstruction(char c, TargetInstruction &outInstruction);
 void handleRoot();
 void handleSet();
 void handleNext();
+void handleWake();
 void handleStatus();
 void handleSerialInput();
 void printIpBanner();
@@ -76,6 +78,7 @@ void setup() {
 
     // 1. Boot the hardware subsystem
     compass.begin();
+    compass.setIdleMode(true);
 
     // 2. Connect WiFi
     WiFi.begin(ssid, password);
@@ -98,6 +101,7 @@ void setup() {
     server.on("/", HTTP_GET, handleRoot);
     server.on("/set", HTTP_GET, handleSet);
     server.on("/next", HTTP_GET, handleNext);
+    server.on("/wake", HTTP_GET, handleWake);
     server.on("/status", HTTP_GET, handleStatus);
     server.begin();
     Serial.println("HTTP server started.");
@@ -124,6 +128,7 @@ void processWordQueue() {
         case STATE_IDLE:
             if (wordQueue.length() > 0) {
                 Serial.println("[FSM] Word received. Switching to NEXT_LETTER.");
+                compass.setIdleMode(false);
                 currentState = STATE_NEXT_LETTER;
             }
             break;
@@ -152,6 +157,7 @@ void processWordQueue() {
                 // Word finished
                 Serial.println("[FSM] Entire word completed. Returning to IDLE.");
                 currentWordDisplay = "Done.";
+                compass.setIdleMode(true);
                 currentState = STATE_IDLE;
             }
             break;
@@ -164,6 +170,12 @@ void processWordQueue() {
             break;
 
         case STATE_WAITING_FOR_USER:
+            break;
+
+        case STATE_STARTUP:
+            compass.playStartupSequence();
+            compass.setIdleMode(true);
+            currentState = STATE_IDLE;
             break;
     }
 }
@@ -208,6 +220,8 @@ void handleRoot() {
         input{font-size:20px;padding:8px;width:200px;text-transform:lowercase;border:none;border-radius:4px;}
         button{font-size:20px;padding:8px 16px;background:#00ffff;color:#000;border:none;border-radius:4px;cursor:pointer;font-weight:bold;}
         .btn-next{background:#ff0055; color:#fff; width:100%; margin-top:15px; padding:16px;}
+        .btn-wake{background:#00ff88; color:#000; width:50%; padding:16px;}
+        .power-controls{display:flex; justify-content:space-between; margin-top:20px;}
         .box{background:#222;color:#0ff;padding:16px;border-radius:8px;margin-top:20px;}
     </style></head><body>
     <h2>Compass Controller</h2>
@@ -223,11 +237,16 @@ void handleRoot() {
     </div>
 
     <button type='button' class='btn-next' onclick='sendNext()'>NEXT LETTER &raquo;</button>
+
+    <div class='power-controls'>
+        <button type='button' class='btn-wake' onclick='sendWake()'>WAKE UP</button>
+    </div>
     
     <script>
         // Paste your custom audio URLs here!
         const startSound = new Audio('https://raw.githubusercontent.com/ThomasUNT/Compass/main/Moving.wav');
         const stopSound = new Audio('https://raw.githubusercontent.com/ThomasUNT/Compass/main/TargetReached.wav');
+        const wakeSound = new Audio('https://raw.githubusercontent.com/ThomasUNT/Compass/main/Startup.wav');
         
         let lastState = -1;
 
@@ -238,8 +257,10 @@ void handleRoot() {
             document.getElementById('wordInput').value = '';
         }
 
-        function sendNext() {
-            fetch('/next');
+        function sendNext() { fetch('/next'); }
+        function sendWake() {
+            fetch('/wake');
+            wakeSound.play().catch(err => console.log("Audio play blocked by browser", err));
         }
 
         // This loop checks the hardware status every 300 milliseconds
@@ -312,6 +333,11 @@ void handleNext() {
 
     server.sendHeader("Location", "/", true);
     server.send(302, "text/plain", "");
+}
+
+void handleWake() {
+    currentState = STATE_STARTUP;
+    server.send(204, "text/plain", "");
 }
 
 void handleSerialInput() {

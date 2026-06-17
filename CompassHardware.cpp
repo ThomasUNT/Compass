@@ -96,6 +96,8 @@ void CompassHardware::update() {
 }
 
 void CompassHardware::setTarget(TargetInstruction target) {
+    isIdle = false;
+
     currentTarget = target;
     motionStartPosition = absolutePosition;
     motionStartTime = millis();
@@ -143,6 +145,8 @@ void CompassHardware::stopServo() {
 }
 
 void CompassHardware::updateLights() {
+if (isIdle) return;
+
     if (isMoving) {
         if (!insideTolerance) {
             markSweepLights();
@@ -360,4 +364,50 @@ float CompassHardware::motionRampFactor() {
     float distanceToTarget = abs(targetPosition - absolutePosition);
     float decel = smoothStep(distanceToTarget / RAMP_ZONE_DEGREES);
     return min(accel, decel);
+}
+
+void CompassHardware::setIdleMode(bool idle) {
+    isIdle = idle;
+
+    if (isIdle) {
+        clearLedLevels();
+        strip.clear();
+        strip.show();
+    }
+}
+
+void CompassHardware:: playStartupSequence() {
+    clearLedLevels();
+
+    for (int i = LED_COUNT - 1; i>= 0; i--) {
+        ledLevel[i] = LED_MAX_BRIGHTNESS;
+
+        showLedLevels();
+        delay(100);
+    }
+
+    delay(500);
+
+    while (true) {
+        bool stillFading = false;
+
+        for (int i = 0; i < LED_COUNT; i++) {
+            if (ledLevel[i] > 0) {
+                ledLevel[i] -= 10;
+                if (ledLevel[i] < 0) ledLevel[i] = 0;
+                stillFading = true;
+            }
+        }
+
+        showLedLevels();
+        delay(15);
+
+        if (!stillFading) {
+            break;
+        }
+    }
+
+    clearLedLevels();
+    strip.clear();
+    strip.show();
 }

@@ -19,6 +19,8 @@ public:
     void begin();
     void update();
     void setTarget(TargetInstruction target);
+    void setIdleMode(bool idle);
+    void playStartupSequence();
     bool hasReachedTarget();
 
 private:
@@ -29,6 +31,7 @@ private:
     // --- State Variables ---
     bool isMoving;
     bool insideTolerance;
+    bool isIdle = false;
     unsigned long firstInsideToleranceTime;
     
     float absolutePosition;
