@@ -63,6 +63,7 @@ bool lookupInstruction(char c, TargetInstruction &outInstruction);
 void handleRoot();
 void handleSet();
 void handleNext();
+void handleStatus();
 void handleSerialInput();
 void printIpBanner();
 String cleanInputString(String raw);
@@ -97,6 +98,7 @@ void setup() {
     server.on("/", HTTP_GET, handleRoot);
     server.on("/set", HTTP_GET, handleSet);
     server.on("/next", HTTP_GET, handleNext);
+    server.on("/status", HTTP_GET, handleStatus);
     server.begin();
     Serial.println("HTTP server started.");
 }
@@ -197,6 +199,7 @@ String cleanInputString(String raw) {
 // WEB & SERIAL HANDLERS
 // ==========================================
 void handleRoot() {
+    // The HTML is now injected with JavaScript to handle the audio and looping updates
     String page = R"rawliteral(
     <!doctype html><html><head>
     <meta name='viewport' content='width=device-width,initial-scale=1'>
@@ -204,28 +207,78 @@ void handleRoot() {
         body{font-family:Arial;padding:16px;max-width:540px;margin:auto;background:#111;color:#fff;}
         input{font-size:20px;padding:8px;width:200px;text-transform:lowercase;border:none;border-radius:4px;}
         button{font-size:20px;padding:8px 16px;background:#00ffff;color:#000;border:none;border-radius:4px;cursor:pointer;font-weight:bold;}
-        .btn-next{background:#ff0055; width:100%; margin-top:15px; padding:16px;}
+        .btn-next{background:#ff0055; color:#fff; width:100%; margin-top:15px; padding:16px;}
         .box{background:#222;color:#0ff;padding:16px;border-radius:8px;margin-top:20px;}
     </style></head><body>
-    <h2>Campaign Companion Controller</h2>
-    <form action='/set' method='GET'>
-        Word: <input type='text' name='word' autofocus>
+    <h2>Compass Controller</h2>
+    
+    <form onsubmit='sendWord(event)'>
+        Word: <input type='text' id='wordInput' autofocus>
         <button type='submit'>Spell</button>
     </form>
     
     <div class='box'>
-        <p><b>Currently Spelling:</b> )rawliteral" + currentWordDisplay + R"rawliteral(</p>
-        <p><b>Queue Remaining:</b> )rawliteral" + wordQueue + R"rawliteral(</p>
+        <p><b>Currently Spelling:</b> <span id='currentText'>None</span></p>
+        <p><b>Queue Remaining:</b> <span id='queueText'></span></p>
     </div>
 
-    <form action='/next' method='GET'>
-        <button type='submit' class='btn-next'>NEXT LETTER &raquo;</button>
-    </form>
+    <button type='button' class='btn-next' onclick='sendNext()'>NEXT LETTER &raquo;</button>
     
+    <script>
+        // Paste your custom audio URLs here!
+        const startSound = new Audio('https://www.soundjay.com/mechanical/sounds/mechanical-clonk-1.mp3');
+        const stopSound = new Audio('https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3');
+        
+        let lastState = -1;
+
+        function sendWord(e) {
+            e.preventDefault();
+            let w = document.getElementById('wordInput').value;
+            fetch('/set?word=' + w);
+            document.getElementById('wordInput').value = '';
+        }
+
+        function sendNext() {
+            fetch('/next');
+        }
+
+        // This loop checks the hardware status every 300 milliseconds
+        setInterval(() => {
+            fetch('/status')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('currentText').innerText = data.current;
+                document.getElementById('queueText').innerText = data.queue;
+
+                // If we just entered the MOVING state (2)
+                if (lastState !== 2 && data.state === 2) {
+                    startSound.currentTime = 0;
+                    startSound.play().catch(err => console.log("Audio play blocked by browser", err));
+                }
+                
+                // If we just entered the WAITING state (3)
+                if (lastState === 2 && data.state === 3) {
+                    stopSound.currentTime = 0;
+                    stopSound.play().catch(err => console.log("Audio play blocked by browser", err));
+                }
+                
+                lastState = data.state;
+            });
+        }, 300);
+    </script>
     </body></html>
     )rawliteral";
 
     server.send(200, "text/html", page);
+}
+
+void handleStatus() {
+    String json = "{";
+    json += "\"state\":" + String(currentState) + ",";
+    json += "\"current\":\"" + currentWordDisplay + "\",";
+    json += "\"queue\":\"" + wordQueue + "\"";
+    json += "}";
+    server.send(200, "application/json", json);
 }
 
 void handleSet() {
@@ -247,8 +300,14 @@ void handleSet() {
 }
 
 void handleNext() {
-    if (currentState == STATE_WAITING_FOR_USER) {
+    Serial.println("[Web Server] 'Next' button clicked.");
+    if (currentState == STATE_WAITING_FOR_USER || currentState == STATE_MOVING) {
+        Serial.println("[FSM] Manual advance triggered. Forcing next letter.");
         currentState = STATE_NEXT_LETTER;
+    }
+    else {
+        Serial.print("[FSM] Next pressed but ignored. Current state code: ");
+        Serial.println(currentState);
     }
 
     server.sendHeader("Location", "/", true);

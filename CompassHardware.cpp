@@ -42,7 +42,7 @@ const float KP_DECREASE = 4.0;
 
 const float RAMP_ZONE_DEGREES = 120.0;
 const unsigned long ACCEL_TIME_MS = 900;
-const float TARGET_TOLERANCE = 2.0;
+const float TARGET_TOLERANCE = 5.0;
 const unsigned long SETTLE_TIME_MS = 600;
 
 const float NEEDLE_MECHANICAL_OFFSET = 210.0;
