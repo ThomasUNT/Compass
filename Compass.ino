@@ -53,7 +53,7 @@ enum SystemState {
 
 SystemState currentState = STATE_IDLE;
 String wordQueue = "";
-String currentWordDisplay = "None"; // Just for the web UI
+String currentWordDisplay = ""; // Just for the web UI
 
 unsigned long pauseStartTime = 0;
 const unsigned long PAUSE_DURATION_MS = 2000; // How long to stay on a letter
@@ -156,7 +156,7 @@ void processWordQueue() {
             } else {
                 // Word finished
                 Serial.println("[FSM] Entire word completed. Returning to IDLE.");
-                currentWordDisplay = "Done.";
+                currentWordDisplay = "";
                 compass.setIdleMode(true);
                 currentState = STATE_IDLE;
             }
@@ -232,8 +232,9 @@ void handleRoot() {
     </form>
     
     <div class='box'>
-        <p><b>Currently Spelling:</b> <span id='currentText'>None</span></p>
+        <p><b>Currently Spelling:</b> <span id='currentText'></span></p>
         <p><b>Queue Remaining:</b> <span id='queueText'></span></p>
+        <p><b>Heading:</b> <span id='headingText'></span></p>
     </div>
 
     <button type='button' class='btn-next' onclick='sendNext()'>NEXT LETTER &raquo;</button>
@@ -262,6 +263,30 @@ void handleRoot() {
             fetch('/wake');
             wakeSound.play().catch(err => console.log("Audio play blocked by browser", err));
         }
+        function getCompassSequence(word) {
+            if (!word) return "";
+
+            const innerRing = {
+                's': 'N', 't': 'NE', 'u': 'E', 'v': 'SE',
+                'w': 'S', 'x': 'SW', 'y': 'W', 'z': 'NW'
+            };
+
+            let sequence = [];
+
+            for (let i = 0; i < word.length; i++) {
+                let char = word[i].toLowerCase();
+
+                if (innerRing[char]) {
+                    sequence.push(innerRing[char]);
+                }
+                else if (char >= 'a' && char <= 'r') {
+                    let index = char.charCodeAt(0) - 97;
+                    let degree = 360 - (index * 20);
+                    sequence.push(degree);
+                }
+            }
+            return `${sequence.join(', ')}`;
+        }
 
         // This loop checks the hardware status every 300 milliseconds
         setInterval(() => {
@@ -270,6 +295,7 @@ void handleRoot() {
             .then(data => {
                 document.getElementById('currentText').innerText = data.current;
                 document.getElementById('queueText').innerText = data.queue;
+                document.getElementById('headingText').innerText = getCompassSequence(data.current);
 
                 // If we just entered the MOVING state (2)
                 if (lastState !== 2 && data.state === 2) {
