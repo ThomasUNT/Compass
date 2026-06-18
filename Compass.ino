@@ -313,7 +313,7 @@ void handleRoot() {
         }
 
         // This loop checks the hardware status every 300 milliseconds
-        setInterval(() => {
+        function updateStatus() {
             fetch('/status')
             .then(response => response.json())
             .then(data => {
@@ -334,8 +334,14 @@ void handleRoot() {
                 }
                 
                 lastState = data.state;
+                setTimeout(updateStatus, 300);
+            })
+            .catch(err => {
+                console.log("Fetch failed, retrying...", err);
+                setTimeout(updateStatus, 1000);
             });
-        }, 300);
+        }
+        updateStatus();
     </script>
     </body></html>
     )rawliteral";
