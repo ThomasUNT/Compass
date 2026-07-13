@@ -48,7 +48,8 @@ enum SystemState {
     STATE_NEXT_LETTER,
     STATE_MOVING,
     STATE_WAITING_FOR_USER,
-    STATE_STARTUP
+    STATE_STARTUP,
+    STATE_CALIBRATING
 };
 
 SystemState currentState = STATE_IDLE;
@@ -105,6 +106,7 @@ void setup() {
     server.on("/wake", HTTP_GET, handleWake);
     server.on("/color", HTTP_GET, handleColor);
     server.on("/status", HTTP_GET, handleStatus);
+    server.on("/calibrate", handleCalibrate);
     server.begin();
     Serial.println("HTTP server started.");
 }
@@ -125,6 +127,10 @@ void loop() {
 // FINITE STATE MACHINE
 // ==========================================
 void processWordQueue() {
+    if (currentState == STATE_CALIBRATING) {
+        return;
+    }
+
     switch (currentState) {
         
         case STATE_IDLE:
@@ -222,8 +228,9 @@ void handleRoot() {
         input{font-size:20px;padding:8px;width:200px;text-transform:lowercase;border:none;border-radius:4px;}
         button{font-size:20px;padding:8px 16px;background:#00ffff;color:#000;border:none;border-radius:4px;cursor:pointer;font-weight:bold;}
         .btn-next{background:#ff0055; color:#fff; width:100%; margin-top:15px; padding:16px;}
-        .btn-wake{background:#00ff88; color:#000; width:48%; padding:16px;}
-        .btn-color{background:#00ffff; color:#000; width:48%; padding:16px; transition: background;}
+        .btn-wake{background:#00ff88; color:#000; width:30%; padding:16px;}
+        .btn-color{background:#00ffff; color:#000; width:30%; padding:16px; transition: background;}
+        .btn-calibrate{background:#ffaa00; color:#000; width:32%; padding:16px; transition: background;}
         .power-controls{display:flex; justify-content:space-between; margin-top:20px;}
         .box{background:#222;color:#0ff;padding:16px;border-radius:8px;margin-top:20px;}
     </style></head><body>
@@ -245,6 +252,7 @@ void handleRoot() {
     <div class='power-controls'>
         <button type='button' class='btn-wake' onclick='sendWake()'>WAKE UP</button>
         <button type='button' id='colorBtn' class='btn-color' onclick='sendColor()'>TURQUOISE</button>
+        <button type='button' id='calBtn' class='btn-calibrate' onclick='toggleCalibration()'>CALIBRATE</button>
     </div>
     
     <script>
@@ -341,6 +349,22 @@ void handleRoot() {
                 setTimeout(updateStatus, 1000);
             });
         }
+
+        function toggleCalibration() {
+            var btn = document.getElementById("calBtn");
+
+            if (btn.innerText === "CALIBRATE") {
+                fetch('/calibrate?action=start').then(response => {
+                    btn.innerText = "CONFIRM";
+                    btn.style.background = "#00ff00";
+                });
+            } else {
+                fetch('/calibrate?action=finish').then(response => {
+                    btn.innerText = "CALIBRATE";
+                    btn.style.background = "#ffaa00";
+                });
+            }
+        }
         updateStatus();
     </script>
     </body></html>
@@ -421,6 +445,21 @@ void handleSerialInput() {
             Serial.println(wordQueue);
         }
     }
+}
+
+void handleCalibrate() {
+    if (server.arg("action") == "start") {
+        currentState = STATE_CALIBRATING;
+        compass.startCalibration();
+        Serial.println("[Calibration] Started. Servo detached, waiting for user.");
+    }
+    else if (server.arg("action") == "finish") {
+        compass.finishCalibration();
+        currentState = STATE_IDLE;
+        Serial.println("[Calibration] Finished. New offset saved.");
+    }
+
+    server.send(200, "text/plain", "Calibration state updated");
 }
 
 void printIpBanner() {

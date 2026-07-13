@@ -21,6 +21,7 @@ public:
     void setTarget(TargetInstruction target);
     void setIdleMode(bool idle);
     void playStartupSequence();
+    float needleOffset;
     bool hasReachedTarget();
     int activeR = 0, activeG = 255, activeB = 255;
     void setColor(int r, int g, int b) {
@@ -28,6 +29,8 @@ public:
         activeG = g;
         activeB = b;
     }
+    void startCalibration();
+    void finishCalibration();
 
 private:
     // --- Hardware Objects ---
