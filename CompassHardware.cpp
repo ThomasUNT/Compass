@@ -431,22 +431,49 @@ void CompassHardware:: playStartupSequence() {
 }
 
 void CompassHardware::playFinishSequence() {
-    for (int level = 0; level <= LED_MAX_BRIGHTNESS; level += 5) {
+    float level = 0.0;
+    while (level < 255.0) {
+        level += 13.0; // Increment to reach 255 in ~20 steps
+        if (level > 255.0) level = 255.0;
+        
         for (int i = 0; i < LED_COUNT; i++) {
-            strip.setPixelColor(i, scaledColor(level));
+            strip.setPixelColor(i, scaledColor((int)level));
         }
         strip.show();
-        delay(20);
+        delay(15); 
     }
-    delay(100);
+    
+    delay(100); // Brief pause holding maximum brightness
+    
+    float upStep = 4.0;
+    float downStep = -3.6;
 
-    for (int level = LED_MAX_BRIGHTNESS; level >= 0; level -= 5) {
-        for (int i = 0; i < LED_COUNT; i++) {
-            strip.setPixelColor(i, scaledColor(level));
+    while (level > 0.0) {
+        // Pulse UP phase (10 frames)
+        for (int f = 0; f < 20; f++) {
+            level += upStep;
+            if (level > 255.0) level = 255.0;
+            
+            for (int i = 0; i < LED_COUNT; i++) {
+                strip.setPixelColor(i, scaledColor((int)level));
+            }
+            strip.show();
+            delay(15);
         }
-        strip.show();
-        delay(20);
+        
+        // Pulse DOWN phase (15 frames)
+        for (int f = 0; f < 30; f++) {
+            level += downStep;
+            if (level < 0.0) level = 0.0;
+            
+            for (int i = 0; i < LED_COUNT; i++) {
+                strip.setPixelColor(i, scaledColor((int)level));
+            }
+            strip.show();
+            delay(15);
+        }
     }
+
     clearLedLevels();
     strip.clear();
     strip.show();
