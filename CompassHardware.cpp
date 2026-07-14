@@ -90,7 +90,12 @@ void CompassHardware::startCalibration() {
 
 void CompassHardware::finishCalibration() {
     readFeedback();
-    needleOffset = (turns * 360.0) + theta;
+    needleOffset = theta;
+    turns = 0;
+
+    clearLedLevels();
+    strip.clear();
+    strip.show();
     servo.attach(SERVO_PIN);
 }
 
@@ -420,6 +425,28 @@ void CompassHardware:: playStartupSequence() {
         }
     }
 
+    clearLedLevels();
+    strip.clear();
+    strip.show();
+}
+
+void CompassHardware::playFinishSequence() {
+    for (int level = 0; level <= LED_MAX_BRIGHTNESS; level += 5) {
+        for (int i = 0; i < LED_COUNT; i++) {
+            strip.setPixelColor(i, scaledColor(level));
+        }
+        strip.show();
+        delay(20);
+    }
+    delay(100);
+
+    for (int level = LED_MAX_BRIGHTNESS; level >= 0; level -= 5) {
+        for (int i = 0; i < LED_COUNT; i++) {
+            strip.setPixelColor(i, scaledColor(level));
+        }
+        strip.show();
+        delay(20);
+    }
     clearLedLevels();
     strip.clear();
     strip.show();

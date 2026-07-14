@@ -49,7 +49,8 @@ enum SystemState {
     STATE_MOVING,
     STATE_WAITING_FOR_USER,
     STATE_STARTUP,
-    STATE_CALIBRATING
+    STATE_CALIBRATING,
+    STATE_FINISHING
 };
 
 SystemState currentState = STATE_IDLE;
@@ -165,8 +166,7 @@ void processWordQueue() {
                 // Word finished
                 Serial.println("[FSM] Entire word completed. Returning to IDLE.");
                 currentWordDisplay = "";
-                compass.setIdleMode(true);
-                currentState = STATE_IDLE;
+                currentState = STATE_FINISHING;
             }
             break;
 
@@ -178,6 +178,12 @@ void processWordQueue() {
             break;
 
         case STATE_WAITING_FOR_USER:
+            break;
+
+        case STATE_FINISHING:
+            compass.playFinishSequence();
+            compass.setIdleMode(true);
+            currentState = STATE_IDLE;
             break;
 
         case STATE_STARTUP:
@@ -260,7 +266,8 @@ void handleRoot() {
         const startSound = new Audio('https://raw.githubusercontent.com/ThomasUNT/Compass/main/Moving.wav');
         const stopSound = new Audio('https://raw.githubusercontent.com/ThomasUNT/Compass/main/TargetReached.wav');
         const wakeSound = new Audio('https://raw.githubusercontent.com/ThomasUNT/Compass/main/Startup.wav');
-        
+        const finishSound = new Audio('');
+
         let isPurple = false;
         let lastState = -1;
 
@@ -271,7 +278,14 @@ void handleRoot() {
             document.getElementById('wordInput').value = '';
         }
 
-        function sendNext() { fetch('/next'); }
+        function sendNext() {
+            let remainingQueue = document.getElementById('queueText').innerText.trim();
+            if (remainingQueue === "") {
+                finishSound.currentTime = 0;
+                finishSound.play().catch(err => console.log("Audio play blocked by browser", err));
+            }
+            fetch('/next');
+        }
         function sendWake() {
             fetch('/wake');
             wakeSound.play().catch(err => console.log("Audio play blocked by browser", err));
@@ -457,6 +471,7 @@ void handleCalibrate() {
         compass.finishCalibration();
         currentState = STATE_IDLE;
         Serial.println("[Calibration] Finished. New offset saved.");
+        Serial.println(compass.needleOffset);
     }
 
     server.send(200, "text/plain", "Calibration state updated");

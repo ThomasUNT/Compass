@@ -31,6 +31,7 @@ public:
     }
     void startCalibration();
     void finishCalibration();
+    void playFinishSequence();
 
 private:
     // --- Hardware Objects ---
