@@ -266,7 +266,7 @@ void handleRoot() {
         const startSound = new Audio('https://raw.githubusercontent.com/ThomasUNT/Compass/main/Moving.wav');
         const stopSound = new Audio('https://raw.githubusercontent.com/ThomasUNT/Compass/main/TargetReached.wav');
         const wakeSound = new Audio('https://raw.githubusercontent.com/ThomasUNT/Compass/main/Startup.wav');
-        const finishSound = new Audio('');
+        const finishSound = new Audio('https://raw.githubusercontent.com/ThomasUNT/Compass/main/Finish.wav');
 
         let isPurple = false;
         let lastState = -1;
