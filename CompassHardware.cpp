@@ -45,12 +45,13 @@ const unsigned long ACCEL_TIME_MS = 900;
 const float TARGET_TOLERANCE = 5.0;
 const unsigned long SETTLE_TIME_MS = 600;
 
-const float NEEDLE_MECHANICAL_OFFSET = 210.0;
+float NEEDLE_MECHANICAL_OFFSET = 210.0;
 // ------------------------
 
 CompassHardware::CompassHardware() 
     : strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800), 
-      isMoving(false), insideTolerance(false), hasLastTrailAngle(false) {}
+      isMoving(false), insideTolerance(false),
+      hasLastTrailAngle(false), needleOffset(210.0) {}
 
 void CompassHardware::begin() {
     pinMode(FEEDBACK_PIN, INPUT);
@@ -76,6 +77,26 @@ void CompassHardware::begin() {
     
     Serial.print("Hardware Initialized. Absolute position = ");
     Serial.println(absolutePosition, 1);
+}
+
+void CompassHardware::startCalibration() {
+    servo.detach();
+
+    clearLedLevels();
+    strip.clear();
+    strip.setPixelColor(0, strip.Color(0, 255, 255));
+    strip.show();
+}
+
+void CompassHardware::finishCalibration() {
+    readFeedback();
+    needleOffset = theta;
+    turns = 0;
+
+    clearLedLevels();
+    strip.clear();
+    strip.show();
+    servo.attach(SERVO_PIN);
 }
 
 void CompassHardware::update() {
@@ -288,7 +309,7 @@ void CompassHardware::updateTurns() {
 }
 
 void CompassHardware::updateAbsolutePosition() {
-    absolutePosition = (turns * 360.0) + theta - NEEDLE_MECHANICAL_OFFSET;
+    absolutePosition = (turns * 360.0) + theta - needleOffset;
 }
 
 float CompassHardware::normalizeAngle(float angle) {
@@ -404,6 +425,28 @@ void CompassHardware:: playStartupSequence() {
         }
     }
 
+    clearLedLevels();
+    strip.clear();
+    strip.show();
+}
+
+void CompassHardware::playFinishSequence() {
+    for (int level = 0; level <= LED_MAX_BRIGHTNESS; level += 5) {
+        for (int i = 0; i < LED_COUNT; i++) {
+            strip.setPixelColor(i, scaledColor(level));
+        }
+        strip.show();
+        delay(20);
+    }
+    delay(100);
+
+    for (int level = LED_MAX_BRIGHTNESS; level >= 0; level -= 5) {
+        for (int i = 0; i < LED_COUNT; i++) {
+            strip.setPixelColor(i, scaledColor(level));
+        }
+        strip.show();
+        delay(20);
+    }
     clearLedLevels();
     strip.clear();
     strip.show();
