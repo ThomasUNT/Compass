@@ -3,8 +3,8 @@
 #include "CompassHardware.h"
 
 // --- Network Setup ---
-const char* ssid = "Frontier4640";
-const char* password = "3084930036";
+const char* ssid = "TBF";
+const char* password = "this14me";
 WebServer server(80);
 
 // --- Hardware Instance ---
