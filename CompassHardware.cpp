@@ -45,12 +45,13 @@ const unsigned long ACCEL_TIME_MS = 900;
 const float TARGET_TOLERANCE = 5.0;
 const unsigned long SETTLE_TIME_MS = 600;
 
-const float NEEDLE_MECHANICAL_OFFSET = 210.0;
+float NEEDLE_MECHANICAL_OFFSET = 210.0;
 // ------------------------
 
 CompassHardware::CompassHardware() 
     : strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800), 
-      isMoving(false), insideTolerance(false), hasLastTrailAngle(false) {}
+      isMoving(false), insideTolerance(false),
+      hasLastTrailAngle(false), needleOffset(210.0) {}
 
 void CompassHardware::begin() {
     pinMode(FEEDBACK_PIN, INPUT);
@@ -76,6 +77,26 @@ void CompassHardware::begin() {
     
     Serial.print("Hardware Initialized. Absolute position = ");
     Serial.println(absolutePosition, 1);
+}
+
+void CompassHardware::startCalibration() {
+    servo.detach();
+
+    clearLedLevels();
+    strip.clear();
+    strip.setPixelColor(0, strip.Color(0, 255, 255));
+    strip.show();
+}
+
+void CompassHardware::finishCalibration() {
+    readFeedback();
+    needleOffset = theta;
+    turns = 0;
+
+    clearLedLevels();
+    strip.clear();
+    strip.show();
+    servo.attach(SERVO_PIN);
 }
 
 void CompassHardware::update() {
@@ -288,7 +309,7 @@ void CompassHardware::updateTurns() {
 }
 
 void CompassHardware::updateAbsolutePosition() {
-    absolutePosition = (turns * 360.0) + theta - NEEDLE_MECHANICAL_OFFSET;
+    absolutePosition = (turns * 360.0) + theta - needleOffset;
 }
 
 float CompassHardware::normalizeAngle(float angle) {
@@ -401,6 +422,55 @@ void CompassHardware:: playStartupSequence() {
 
         if (!stillFading) {
             break;
+        }
+    }
+
+    clearLedLevels();
+    strip.clear();
+    strip.show();
+}
+
+void CompassHardware::playFinishSequence() {
+    float level = 0.0;
+    while (level < 255.0) {
+        level += 13.0; // Increment to reach 255 in ~20 steps
+        if (level > 255.0) level = 255.0;
+        
+        for (int i = 0; i < LED_COUNT; i++) {
+            strip.setPixelColor(i, scaledColor((int)level));
+        }
+        strip.show();
+        delay(15); 
+    }
+    
+    delay(100); // Brief pause holding maximum brightness
+    
+    float upStep = 4.0;
+    float downStep = -3.6;
+
+    while (level > 0.0) {
+        // Pulse UP phase (10 frames)
+        for (int f = 0; f < 20; f++) {
+            level += upStep;
+            if (level > 255.0) level = 255.0;
+            
+            for (int i = 0; i < LED_COUNT; i++) {
+                strip.setPixelColor(i, scaledColor((int)level));
+            }
+            strip.show();
+            delay(15);
+        }
+        
+        // Pulse DOWN phase (15 frames)
+        for (int f = 0; f < 30; f++) {
+            level += downStep;
+            if (level < 0.0) level = 0.0;
+            
+            for (int i = 0; i < LED_COUNT; i++) {
+                strip.setPixelColor(i, scaledColor((int)level));
+            }
+            strip.show();
+            delay(15);
         }
     }
 
